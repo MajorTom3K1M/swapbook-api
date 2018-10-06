@@ -1,0 +1,26 @@
+{
+  "name": "swapbook",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "export NODE_ENV=test || SET \"NODE_ENV=test\""
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.18.3",
+    "consolidate": "^0.15.1",
+    "dust": "^0.3.0",
+    "dustjs-helpers": "^1.7.4",
+    "dustjs-linkedin": "^2.7.5",
+    "express": "^4.16.3",
+    "hbs": "^4.0.1",
+    "jsonwebtoken": "^8.3.0",
+    "lodash": "^4.17.11",
+    "multer": "^1.4.0",
+    "pg": "^7.4.3",
+    "validator": "^10.8.0"
+  }
+}
