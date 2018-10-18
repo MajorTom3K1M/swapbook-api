@@ -86,6 +86,28 @@ app.get('/books/me', authenticate, (req, res) => {
     });
 });
 
+app.get('/books/:id', (req, res) => {
+  var id = req.params.id;
+  pool.query("SELECT * FROM books WHERE id=$1",
+    [id])
+    .then((result) => {
+      res.status(200).send(result.rows);
+    }).catch((e) => {
+      res.status(404).send();
+    });
+});
+
+app.delete('/books/:id', authenticate, (req, res) => {
+  var id = req.params.id;
+  pool.query("DELETE FROM books WHERE id=$1",
+    [id])
+    .then((result) => {
+        res.status(200).send(result);
+    }).catch((e) => {
+        res.status(404).send();
+    });
+});
+
 app.get('/books', (req, res) => {
   pool.query("SELECT * FROM books")
     .then((result) => {
