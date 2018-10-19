@@ -108,6 +108,7 @@ app.delete('/books/:id', authenticate, (req, res) => {
     });
 });
 
+
 app.get('/books', (req, res) => {
   pool.query("SELECT * FROM books")
     .then((result) => {
