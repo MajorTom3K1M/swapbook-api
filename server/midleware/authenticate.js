@@ -4,6 +4,7 @@ var authenticate = (req, res, next) => {
   var token = req.header('x-auth');
 
   user.findByToken(token).then((user) => {
+    //console.log(user);
     if(user.rows[0] == null) {
       return Promise.reject();
     }
@@ -12,7 +13,6 @@ var authenticate = (req, res, next) => {
     req.token = token;
     next();
   }).catch((e) => {
-    console.log('here no one');
     res.status(401).send();
   });
 }

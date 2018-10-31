@@ -5,10 +5,10 @@ var {pool} = require('.././db/postgresql');
 
 var generateAuthToken = function (username) {
   return new Promise((resolve, reject) => {
-    pool.query("SELECT id FROM users WHERE username = $1",[username])
+    pool.query("SELECT user_id FROM users WHERE username = $1",[username])
       .then((result) => {
         var access = 'auth';
-        var token = jwt.sign({id: result.rows[0].id, access},process.env.JWT_SECRET).toString();
+        var token = jwt.sign({id: result.rows[0].user_id, access},process.env.JWT_SECRET).toString();
         pool.query("UPDATE users SET tokens = $1 WHERE username = $2",
           [`{\"access\" : \"${access}\" , \"token\": \"${token}\"}`,username])
           .then((result) => {
@@ -20,8 +20,8 @@ var generateAuthToken = function (username) {
     });
 };
 
-var findByCredentials = function (email, password) {
-  return pool.query("SELECT * FROM users WHERE email = $1",[email])
+var findByCredentials = function (login, password) {
+  return pool.query("SELECT user_id,name,username,email,password,telephone FROM users WHERE email = $1 OR username = $1",[login])
     .then((user) => {
       if(user.rows[0] == null) { //email are wrong
         return Promise.reject();
@@ -49,8 +49,25 @@ var findByToken = function (token) {
     return Promise.reject();
   }
 
-  return pool.query("SELECT * FROM users WHERE id = $1 AND tokens->>'access' = 'auth' AND tokens->>'token' = $2",
-    [decoded.id,token]);
+  return pool.query("SELECT * FROM users WHERE user_id = $1 AND tokens->>'access' = 'auth' AND tokens->>'token' = $2",
+    [decoded.id ,token]);
 }
 
-module.exports = {generateAuthToken,findByCredentials,findByToken};
+var newPasswordHash = function (user,password) {
+  bcrypt.genSalt(10, (err, salt) => {
+    bcrypt.hash(password, salt, (err, hash) => {
+        console.log(password);
+        console.log(hash);
+        pool.query("UPDATE users SET password = $1 WHERE email = $2 OR username = $2",
+          [hash,user])
+          .then((result) => {
+            console.log(password);
+            return Promise.resolve();
+          }).catch((e) => {
+            return Promise.reject();
+          });
+    });
+  });
+}
+
+module.exports = {generateAuthToken,findByCredentials,findByToken,newPasswordHash};
