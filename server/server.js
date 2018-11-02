@@ -99,7 +99,6 @@ app.post('/users/forgot', (req, res) => {
           res.status(400).send('Unable to send mail', err);
         }
         res.status(200).send('An e-mail has been sent to ' + _user.email + ' with further instructions.');
-        done(err, 'done');
       });
     }
   ])
@@ -129,7 +128,7 @@ app.post('/users/login', (req, res) => {
 app.post('/books/upload',[authenticate, upload.single('bookImage')], (req, res) => {
   var body = _.pick(req.body,['book_name','description']);
 
-  pool.query("INSERT INTO books(book_name, image, description, user_creator, status) VALUES ($1,$2,$3,$4, 'Idle')",
+  pool.query("INSERT INTO books(book_name, image, description, user_creator, status) VALUES ($1,$2,$3,$4,1)",
     [body.book_name, req.file.path, body.description, req.user.user_id])
     .then((result) => {
         res.status(201).json({
@@ -144,7 +143,7 @@ app.post('/books/upload',[authenticate, upload.single('bookImage')], (req, res) 
 });
 
 app.get('/books/me', authenticate, (req, res) => {
-  pool.query("SELECT * FROM books WHERE creator = $1 AND status = 'Idle'",
+  pool.query("SELECT * FROM books WHERE creator = $1 AND status = 1",
     [req.user.user_id])
     .then((result) => {
       res.status(200).send(result.rows);
@@ -178,8 +177,9 @@ app.delete('/books/:id', authenticate, (req, res) => {
     });
 });
 
+/////////////////////////////////////////
 app.get('/books', (req, res) => {
-  pool.query("SELECT * FROM books")
+  pool.query("SELECT * FROM books WHERE status = '1'") // ยังไม่แก้
     .then((result) => {
       res.status(200).send(result.rows);
       console.log('GET /books');
@@ -187,6 +187,7 @@ app.get('/books', (req, res) => {
       res.status(404).send();
     });
 });
+/////////////////////////////////////////
 
 app.post('/search', (req, res) => {
   var body = _.pick(req.body, ['query']);
@@ -200,13 +201,57 @@ app.post('/search', (req, res) => {
     })
 });
 
-app.post('/offer', (res, req) => {
-
+app.get('/transaction/offer', authenticate, (req, res) => {
+  pool.query("SELECT * FROM transaction WHERE user_offer = $1",
+    [req.user.user_id]).then((result) => {
+      res.status(200).send(result.rows);
+    }).catch((e) => {
+      res.status(400).send(e);
+    });
 });
 
-app.post('/trade', (res, req) => {
-
+app.get('/transaction/deal', authenticate, (req , res) => {
+  pool.query("SELECT * FROM transaction WHERE user_deal = $1",
+    [req.user.user_id]).then((result) => {
+      res.status(200).send(result.rows);
+    }).catch((e) => {
+      res.status(400).send(e);
+    });
 });
+
+app.post('/offer', authenticate, (req, res) => {
+  var body = _.pick(req.body, ['user_deal','book_offer','book_deal']);
+  if(req.user.user_id != body.user_deal) {
+    pool.query("INSERT INTO transaction(user_offer, user_deal, book_offer, book_deal, status) VALUES  ($1,$2,$3,$4)",
+      [req.user.user_id, body.user_deal, body.book_offer, body.book_deal]).then((result) => {
+        pool.query("UPDATE books SET status = 2 WHERE book_id = $1",
+          [body.book_offer]).then((update) => {
+            res.status(200).json({
+              message: "Offer Success"
+            });
+          }).catch((e) => {
+            res.status(400).send(e);
+          });
+      }).catch((e) => {
+        res.status(400).send(e);
+      });
+    } else {
+      res.status(400).json({
+        message: "You can't offer yourself"
+      });
+    }
+});
+
+// app.post('/trade', async (res, req) => {
+//   var body = _.pick(req.body, ['transaction_number']);
+//   var transaction;
+//   await pool.query("")
+//
+//   await pool.query("UPDATE transaction SET status = 3 WHERE number = $1",
+//     [body.transaction_number]).then(async (result) => {
+//       await pool.query("DELETE FROM books WHERE ")
+//     });
+// });
 
 app.listen(port, () => {
   console.log('Server Started at Port ' + port);
