@@ -245,10 +245,10 @@ app.get('/trade/info', (req, res) => {
   var offer;
   var deal;
 
-  pool.query("SELECT book_id, book_name, description, user_creator, type, image FROM books,transaction WHERE (books.book_id = transaction.book_offer)")
+  pool.query("SELECT book_id, book_name, description, user_creator, type, image, user_id, name, username, email, telephone FROM books,transaction,users WHERE (books.book_id = transaction.book_offer) AND (transaction.user_offer = users.user_id)")
     .then((offer_info) => {
       offer = offer_info.rows[0];
-      pool.query("SELECT book_id, book_name, description, user_creator, type, image FROM books,transaction WHERE (books.book_id = transaction.book_deal)")
+      pool.query("SELECT book_id, book_name, description, user_creator, type, image, user_id, name, username, email, telephone FROM books,transaction,users WHERE (books.book_id = transaction.book_deal) AND (transaction.user_deal = users.user_id)")
         .then((deal_info) => {
           deal = deal_info.rows[0];
           res.status(200).json({deal,offer});
