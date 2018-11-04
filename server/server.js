@@ -167,7 +167,7 @@ app.get('/books/:id', (req, res) => {
 
 app.delete('/books/:id', authenticate, (req, res) => {
   var id = req.params.id;
-  pool.query("DELETE FROM books WHERE book_id=$1 AND creator=$2",
+  pool.query("DELETE FROM books WHERE book_id=$1 AND user_creator = $2",
     [id,req.user.user_id])
     .then((result) => {
         res.status(200).send(result);
@@ -177,23 +177,21 @@ app.delete('/books/:id', authenticate, (req, res) => {
     });
 });
 
-/////////////////////////////////////////
-app.get('/books', (req, res) => {
-  pool.query("SELECT * FROM books WHERE status = '1'") // ยังไม่แก้
-    .then((result) => {
+app.get('/books', authenticate, (req, res) => {
+  pool.query("SELECT * FROM books WHERE status = 1 AND NOT user_creator = $1",
+    [req.user.user_id]).then((result) => {
       res.status(200).send(result.rows);
       console.log('GET /books');
     }).catch((e) => {
       res.status(404).send();
     });
 });
-/////////////////////////////////////////
 
-app.post('/search', (req, res) => {
+app.post('/search', authenticate, (req, res) => {
   var body = _.pick(req.body, ['query']);
 
-  pool.query("SELECT * FROM books WHERE LOWER(book_name) LIKE LOWER($1) ORDER BY LOWER(book_name)",
-    ["%"+body.query+"%"]).then((result) => {
+  pool.query("SELECT * FROM books WHERE LOWER(book_name) LIKE LOWER($1) AND status = 1 AND NOT user_creator = $2 ORDER BY LOWER(book_name)",
+    ["%"+body.query+"%", req.user.user_id]).then((result) => {
       res.status(200).send(result.rows);
     }).catch((e) => {
       console.log(e);
@@ -222,7 +220,7 @@ app.get('/transaction/deal', authenticate, (req , res) => {
 app.post('/offer', authenticate, (req, res) => {
   var body = _.pick(req.body, ['user_deal','book_offer','book_deal']);
   if(req.user.user_id != body.user_deal) {
-    pool.query("INSERT INTO transaction(user_offer, user_deal, book_offer, book_deal, status) VALUES  ($1,$2,$3,$4)",
+    pool .query("INSERT INTO transaction(user_offer, user_deal, book_offer, book_deal, status) VALUES  ($1,$2,$3,$4,2)",
       [req.user.user_id, body.user_deal, body.book_offer, body.book_deal]).then((result) => {
         pool.query("UPDATE books SET status = 2 WHERE book_id = $1",
           [body.book_offer]).then((update) => {
@@ -242,16 +240,53 @@ app.post('/offer', authenticate, (req, res) => {
     }
 });
 
-// app.post('/trade', async (res, req) => {
-//   var body = _.pick(req.body, ['transaction_number']);
-//   var transaction;
-//   await pool.query("")
-//
-//   await pool.query("UPDATE transaction SET status = 3 WHERE number = $1",
-//     [body.transaction_number]).then(async (result) => {
-//       await pool.query("DELETE FROM books WHERE ")
-//     });
-// });
+app.get('/trade/info', (req, res) => {
+  var body = _.pick(req.body, ['number']);
+  var offer;
+  var deal;
+
+  pool.query("SELECT book_id, book_name, description, user_creator, type, image FROM books,transaction WHERE (books.book_id = transaction.book_offer)")
+    .then((offer_info) => {
+      offer = offer_info.rows[0];
+      pool.query("SELECT book_id, book_name, description, user_creator, type, image FROM books,transaction WHERE (books.book_id = transaction.book_deal)")
+        .then((deal_info) => {
+          deal = deal_info.rows[0];
+          res.status(200).json({deal,offer});
+        }).catch((e) => {
+          res.status(400).send(e);
+        });
+    }).catch((e) => {
+      res.status(400).send(e);
+    });
+});
+
+app.post('/trade', (req, res) => {
+  var body = _.pick(req.body, ['number']); // transaction number
+
+  pool.query("SELECT * FROM transaction WHERE number = $1",
+    [body.number]).then((transaction) => {
+      pool.query("UPDATE transaction SET status = 3 WHERE number = $1",
+        [body.number]).then((result) => {
+          pool.query("UPDATE books SET status = 3 WHERE book_id = $1",
+            [transaction.rows[0].book_offer]).then((update1) => {
+              pool.query("UPDATE books SET status = 3 WHERE book_id = $1",
+                [transaction.rows[0].book_deal]).then((update2) => {
+                  res.status(200).json({
+                    message: "Update status successfully"
+                  });
+                }).catch((e) => {
+                  res.status(400).send(e);
+                });
+            }).catch((e) => {
+              res.status(400).send(e);
+            });
+        }).catch((e) => {
+          res.status(400).send(e);
+        });
+  }).catch((e) => {
+    res.status(400).send(e);
+  });
+});
 
 app.listen(port, () => {
   console.log('Server Started at Port ' + port);
