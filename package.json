@@ -16,7 +16,7 @@
     "dust": "^0.3.0",
     "dustjs-helpers": "^1.7.4",
     "dustjs-linkedin": "^2.7.5",
-    "express": "^4.16.3",
+    "express": "^4.17.3",
     "handlebars": "^4.0.12",
     "hbs": "^4.0.1",
     "jsonwebtoken": "^8.3.0",
